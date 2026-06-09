@@ -9,3 +9,4 @@ def dataformatter(csv_path: Path) -> pandas.DataFrame:
         raise ValueError("Is not a csv file.")
 
     return pandas.read_csv(csv_path, header=1)
+
