@@ -1,4 +1,5 @@
 from pathlib import Path
+from pandas import DataFrame
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -7,22 +8,25 @@ import seaborn as sns
 from data_tools import dataformatter
 
 
-def visual_data_whole(
-    path: Path, 
-    data: str, 
-    title: str) -> None:
+def visual_data_line(
+    dataframe: DataFrame, 
+    title: str,
+    data_collumn: str,
+    countries: list[str] = [],
+    ) -> None:
 
-    df = dataformatter(path)
+    if countries == []:
+        countries = dataframe["country"].unique()
 
-    df["date"] = pd.to_datetime(df["date"])
+    dataframe["date"] = pd.to_datetime(dataframe["date"])
 
     plt.figure(figsize=(14, 8))
 
-    for country in df["country"].unique():
-        country_data = df[df["country"] == country].sort_values("date")
+    for country in countries:
+        country_data = dataframe[dataframe["country"] == country].sort_values("date")
         plt.plot(
             country_data["date"],
-            country_data[data],
+            country_data[data_collumn],
             label=country,
             marker="o",
             linewidth=2,
@@ -31,7 +35,7 @@ def visual_data_whole(
         )
 
     plt.xlabel("Date", fontsize=12, fontweight="bold")
-    plt.ylabel(data, fontsize=12, fontweight="bold")
+    plt.ylabel(data_collumn, fontsize=12, fontweight="bold")
     plt.title(
         title, fontsize=14, fontweight="bold"
     )
@@ -41,11 +45,31 @@ def visual_data_whole(
     plt.tight_layout()
 
 
+def visual_data_table(
+    dataframe: DataFrame, 
+    title: str,
+    data_collumn: list[str] = [],
+    countries: list[str] = [],
+    ) -> None:
+    plt.table()
+
+
 
 if __name__ == "__main__":
-    visual_data_whole(
-        Path("./global_fuel_prices_2020_2026.csv"), 
-        data="tax_percentage",
-        title="yes")
+
+    data = dataformatter(Path("./global_fuel_prices_2020_2026.csv"))
+    
+    visual_data_line(
+        data, 
+        "yes",
+        "tax_percentage",
+    )
+
+    visual_data_table(
+        data,
+        "income and subsidy level",
+        ["income_level", "subsidy_level"]
+        
+    )
 
     plt.show()
