@@ -3,16 +3,27 @@ from torch import nn
 
 
 def detect_device() -> str:
-    pass
+    if torch.cuda.is_available():
+        return "cuda"
+    elif torch.mps.is_available():
+        return "mps"
+    elif torch.xpu.is_available():
+        return "xps"
+
+    return "cpu"
 
 
 class BayesianLinear(nn.Module):
-    def __init__(self,in_dim,out_dim, bias=False, device='cuda'):
+    def __init__(self, in_dim: int, out_dim: int, bias: bool=False, device: str=''):
         super().__init__()
         self.in_dim = in_dim
         self.out_dim = out_dim
         self.bias = bias
-        self.device = device
+
+        if device != '':
+            self.device = device
+        else:
+            self.device = detect_device()
 
         self.w_log_var = nn.Parameter(-2 + 0.1* torch.randn([self.in_dim,self.out_dim],device=self.device))
         self.w_mu = nn.Parameter(0.1 * torch.randn([self.in_dim,self.out_dim],device=self.device))
@@ -22,7 +33,7 @@ class BayesianLinear(nn.Module):
             self.bias_mu = nn.Parameter(0.1 * torch.randn([self.out_dim],device=self.device))
 
 
-    def forward(self,x):
+    def forward(self, x):
          # Sample weights from approximate posterior: mean + stddev * random noise - reparam trick
         weight = self.w_mu + self.w_log_var.exp().sqrt() * torch.randn_like(self.w_log_var,device=self.device)
         if self.bias:
