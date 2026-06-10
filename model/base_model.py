@@ -42,24 +42,20 @@ class BayesianLinear(nn.Module):
             )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        # Sample weights from approximate posterior: mean + stddev * random noise - reparam trick
         weight: torch.Tensor = (
             self.w_mu
             + self.w_log_var.exp().sqrt()
             * torch.randn_like(self.w_log_var, device=self.device)
         )
         if self.bias:
-            # Sample bias similarly if enabled
             bias: torch.Tensor = (
                 self.bias_mu
                 + self.bias_log_var.exp().sqrt()
                 * torch.randn_like(self.bias_log_var, device=self.device)
             )
         else:
-            # If no bias, use zero bias vector
             bias = torch.zeros(self.out_dim, device=self.device)
 
-        # Apply linear transformation using sampled weight and bias
         return F.linear(x, weight.t(), bias)
 
     def kl_div(self) -> torch.Tensor:
@@ -87,7 +83,6 @@ class BayesianNeuralNetwork(nn.Module):
 
         self.activation = nn.Tanh()
 
-    # Sums KL divergence across all layers
     def kl_div(self) -> torch.Tensor:
         kl_total: torch.Tensor = torch.tensor(0.0, device=self.device)
         for lyr in self.modules():
