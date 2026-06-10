@@ -28,48 +28,127 @@ def split_input(df: pd.DataFrame) -> torch.Tensor:
     df["income_index"] = income_index
     df["subsidy_index"] = subsidy_index
 
-    return torch.Tensor(df["country_index", "income_index", "subsidy_index"])
+    return torch.Tensor(df[["country_index", "income_index", "subsidy_index", "tax_percentage"]].values)
 
 
 def split_groundtruth(df: pd.DataFrame) -> torch.Tensor:
     truth_frame = df["brent_crude_usd"]
 
-    return torch.Tensor(truth_frame)
+    return torch.Tensor(truth_frame.values).unsqueeze(1)
 
 
 if __name__ == "__main__":
-    # Test split_groundtruth function
     import numpy as np
 
-    # Create a sample dataframe
-    test_df = pd.DataFrame(
+    print("=" * 60)
+    print("Testing split_input function")
+    print("=" * 60)
+
+    # Create a sample dataframe for split_input
+    test_df_input = pd.DataFrame(
+        {
+            "country": ["USA", "USA", "China", "China", "India"],
+            "income_level": ["High", "High", "Medium", "Medium", "Low"],
+            "subsidy_level": ["Low", "Medium", "High", "Medium", "Low"],
+        }
+    )
+
+    print("\nTest DataFrame:")
+    print(test_df_input)
+    print()
+
+    # Test split_input
+    try:
+        result_input = split_input(test_df_input)
+        print("✓ split_input executed successfully")
+        print("Result type:", type(result_input))
+        print("Result shape:", result_input.shape)
+        print("Result dtype:", result_input.dtype)
+        print("Result values:")
+        print(result_input)
+        print()
+
+        # Verify shape
+        assert result_input.shape[0] == len(test_df_input), "Row count mismatch!"
+        assert result_input.shape[1] == 3, (
+            "Should have 3 columns (country, income, subsidy)!"
+        )
+        print("✓ Shape is correct (5 rows, 3 columns)")
+
+        # Verify value ranges
+        assert (result_input >= 0).all(), "All indices should be non-negative!"
+        print("✓ All values are non-negative indices")
+
+        # Check country_converter was populated
+        assert len(country_converter) > 0, "country_converter should be populated!"
+        print(f"✓ country_converter populated: {country_converter}")
+
+        # Verify indices are in expected ranges
+        assert (result_input[:, 1] >= 0).all() and (result_input[:, 1] <= 2).all(), (
+            "Income indices out of range!"
+        )
+        assert (result_input[:, 2] >= 0).all() and (result_input[:, 2] <= 2).all(), (
+            "Subsidy indices out of range!"
+        )
+        print("✓ Income and subsidy indices in valid range [0-2]")
+
+    except Exception as e:
+        print(f"✗ Error in split_input: {e}")
+        import traceback
+
+        traceback.print_exc()
+
+    print()
+    print("=" * 60)
+    print("Testing split_groundtruth function")
+    print("=" * 60)
+
+    # Create a sample dataframe for split_groundtruth
+    test_df_truth = pd.DataFrame(
         {
             "brent_crude_usd": [45.5, 60.2, 55.8, 70.1, 48.9],
             "other_column": ["a", "b", "c", "d", "e"],
         }
     )
 
-    print("Test DataFrame:")
-    print(test_df)
+    print("\nTest DataFrame:")
+    print(test_df_truth)
     print()
 
     # Test split_groundtruth
-    result = split_groundtruth(test_df)
+    try:
+        result_truth = split_groundtruth(test_df_truth)
+        print("✓ split_groundtruth executed successfully")
+        print("Result type:", type(result_truth))
+        print("Result shape:", result_truth.shape)
+        print("Result dtype:", result_truth.dtype)
+        print("Result values:")
+        print(result_truth)
+        print()
 
-    print("Result type:", type(result))
-    print("Result shape:", result.shape)
-    print("Result dtype:", result.dtype)
-    print("Result values:")
-    print(result)
+        # Verify values match
+        expected = torch.Tensor(test_df_truth["brent_crude_usd"].values).unsqueeze(1)
+        assert torch.allclose(result_truth, expected), "Values don't match!"
+        print("✓ Values match expected output")
+        print()
+
+        # Check for NaN or Inf
+        assert not torch.isnan(result_truth).any(), "Result contains NaN values!"
+        assert not torch.isinf(result_truth).any(), "Result contains Inf values!"
+        print("✓ No NaN or Inf values")
+
+        # Verify shape
+        assert result_truth.shape[0] == len(test_df_truth), "Row count mismatch!"
+        assert result_truth.shape[1] == 1, "Should have 1 column (reshaped as 2D)!"
+        print("✓ Shape is correct (5 rows, 1 column)")
+
+    except Exception as e:
+        print(f"✗ Error in split_groundtruth: {e}")
+        import traceback
+
+        traceback.print_exc()
+
     print()
-
-    # Verify values match
-    expected = torch.Tensor(test_df["brent_crude_usd"].values)
-    assert torch.allclose(result, expected), "Values don't match!"
-    print("✓ Values match expected output")
-    print()
-
-    # Check for NaN or Inf
-    assert not torch.isnan(result).any(), "Result contains NaN values!"
-    assert not torch.isinf(result).any(), "Result contains Inf values!"
-    print("✓ No NaN or Inf values")
+    print("=" * 60)
+    print("All tests completed!")
+    print("=" * 60)
