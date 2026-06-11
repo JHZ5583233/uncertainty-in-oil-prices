@@ -2,16 +2,7 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-
-def detect_device() -> str:
-    if torch.cuda.is_available():
-        return "cuda"
-    elif torch.mps.is_available():
-        return "mps"
-    elif torch.xpu.is_available():
-        return "xps"
-
-    return "cpu"
+from ..tools import detect_device
 
 
 class BayesianLinear(nn.Module):
@@ -74,12 +65,20 @@ class BayesianLinear(nn.Module):
 
 
 class BayesianNeuralNetwork(nn.Module):
-    def __init__(self, in_dim=2, use_bias=False, device="cuda"):
+    def __init__(self, in_dim=2, use_bias=False, device=""):
         super().__init__()
-        self.device = device
+
+        if device != "":
+            self.device = device
+        else:
+            self.device = detect_device()
+
         self.BL1 = BayesianLinear(in_dim, 5, bias=use_bias, device=self.device)
         self.BL2 = BayesianLinear(5, 5, bias=use_bias, device=self.device)
-        self.BL3 = BayesianLinear(5, 1, bias=use_bias, device=self.device)
+        self.BL3 = BayesianLinear(5, 5, bias=use_bias, device=self.device)
+
+        self.mean = BayesianLinear(5, 1, bias=use_bias, device=self.device)
+        self.varience = BayesianLinear(5, 1, bias=use_bias, device=self.device)
 
         self.activation = nn.Tanh()
 
@@ -90,8 +89,9 @@ class BayesianNeuralNetwork(nn.Module):
                 kl_total = kl_total + lyr.kl_div()
         return kl_total
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         x = self.activation(self.BL1(x))
         x = self.activation(self.BL2(x))
-        x = self.BL3(x)
-        return x
+        x = self.activation(self.BL3(x))
+        
+        return (self.mean(x), self.varience(x))
