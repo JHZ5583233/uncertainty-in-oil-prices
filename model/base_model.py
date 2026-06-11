@@ -2,7 +2,7 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-from ..tools import detect_device
+from tools import detect_device
 
 
 class BayesianLinear(nn.Module):

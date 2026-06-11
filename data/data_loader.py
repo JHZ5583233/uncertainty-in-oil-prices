@@ -12,7 +12,7 @@ def split_input(df: pd.DataFrame) -> pd.DataFrame:
 
     countries = df["country"].unique()
     country_indexer: dict[str, int] = dict()
-    level_indexer: dict[str, int] = {"Low": 0, "Medium": 1, "High": 2}
+    level_indexer: dict[str, int] = {"Low": 0, "Medium": 1, "High": 2, "Middle": 1, "Very High": 3}
 
     for index, country in enumerate(countries):
         country_converter[index] = country
@@ -48,10 +48,10 @@ def data_to_loader(
     X_train, X_test, Y_train, Y_test = train_test_split(
         input_data, output_data, test_size=test_size
     )
-    X_train_tensor = torch.tensor(X_train)
-    Y_train_tensor = torch.tensor(Y_train)
-    X_test_tensor = torch.tensor(X_test)
-    Y_test_tensor = torch.tensor(Y_test)
+    X_train_tensor = torch.from_numpy(X_train.values)
+    Y_train_tensor = torch.from_numpy(Y_train.values)
+    X_test_tensor = torch.from_numpy(X_test.values)
+    Y_test_tensor = torch.from_numpy(Y_test.values)
 
     train_dataset = TensorDataset(X_train_tensor, Y_train_tensor)
     test_dataset = TensorDataset(X_test_tensor, Y_test_tensor)
