@@ -1,7 +1,7 @@
 import torch
 from torch import optim
 
-from ..tools import detect_device
+from tools import detect_device
 
 loss = torch.nn.GaussianNLLLoss()
 
