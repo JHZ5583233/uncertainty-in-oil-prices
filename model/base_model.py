@@ -78,7 +78,7 @@ class BayesianLinear(torch.nn.Module):
                 -self.bias_log_var + self.bias_log_var.exp() + self.bias_mu**2 - 1
             )
         else:
-            kl_div_b: Tensor = torch.tensor(0.0, device=self.device)
+            kl_div_b: Tensor = torch.zeros((), device=self.device)
 
         return kl_div_W + kl_div_b
 

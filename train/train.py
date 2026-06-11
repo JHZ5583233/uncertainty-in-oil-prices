@@ -11,7 +11,16 @@ def train_bnn(
     epochs=50, 
     beta=1.0
 ):
-    """Train a Bayesian neural network using BCE loss + KL regularization."""
+    """Train a Bayesian neural network using BCE loss + KL regularization.
+
+    Args:
+        model: Bayesian neural network to train.
+        train_loader: Training data loader yielding feature and label batches.
+        test_loader: Evaluation data loader yielding feature and label batches.
+        optimizer: Optimizer configured with model parameters.
+        epochs: Number of training epochs.
+        beta: KL divergence scaling factor.
+    """
     dataset_size = len(train_loader.dataset)
     device = model.device
 
