@@ -2,11 +2,15 @@ import pandas as pd
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 
+from sklearn.model_selection import train_test_split
+
 level_converter: dict[int, str] = {0: "Low", 1: "Medium", 2: "High"}
 country_converter: dict[int, str] = dict()
 
 
-def split_input(df: pd.DataFrame) -> torch.Tensor:
+def split_input(df: pd.DataFrame) -> pd.DataFrame:
+    r_dataframe = pd.DataFrame()
+    
     countries = df["country"].unique()
     country_indexer: dict[str, int] = dict()
     level_indexer: dict[str, int] = {"Low": 0, "Medium": 1, "High": 2}
@@ -24,17 +28,38 @@ def split_input(df: pd.DataFrame) -> torch.Tensor:
         income_index.append(level_indexer[df["income_level"].iloc[i]])
         subsidy_index.append(level_indexer[df["subsidy_level"].iloc[i]])
 
-    df["country_index"] = country_index
-    df["income_index"] = income_index
-    df["subsidy_index"] = subsidy_index
+    r_dataframe["country_index"] = country_index
+    r_dataframe["income_index"] = income_index
+    r_dataframe["subsidy_index"] = subsidy_index
+    r_dataframe["tax_percentage"] = df["tax_percentage"]
 
-    return torch.Tensor(df[["country_index", "income_index", "subsidy_index", "tax_percentage"]].values)
+    return r_dataframe
 
 
-def split_groundtruth(df: pd.DataFrame) -> torch.Tensor:
-    truth_frame = df["brent_crude_usd"]
+def split_groundtruth(df: pd.DataFrame) -> pd.DataFrame:
+    r_dataframe = pd.DataFrame()
+    r_dataframe["brent_cruse_usd"] = df["brent_crude_usd"]
 
-    return torch.Tensor(truth_frame.values).unsqueeze(1)
+    return r_dataframe
+
+def data_to_loader(
+    input_data: pd.DataFrame, 
+    output_data: pd.DataFrame,
+    test_size: float =0.2
+) -> tuple[DataLoader, DataLoader]:
+    X_train, X_test, Y_train, Y_test = train_test_split(input_data, output_data, test_size=test_size)
+    X_train_tensor = torch.tensor(X_train)
+    Y_train_tensor = torch.tensor(Y_train)
+    X_test_tensor = torch.tensor(X_test)
+    Y_test_tensor = torch.tensor(Y_test)
+    
+    train_dataset = TensorDataset(X_train_tensor, Y_train_tensor)
+    test_dataset = TensorDataset(X_test_tensor, Y_test_tensor)
+    
+    train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True)
+    test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False)
+
+    return (train_loader, test_loader)
 
 
 if __name__ == "__main__":
