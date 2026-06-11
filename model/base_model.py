@@ -83,7 +83,7 @@ class BayesianLinear(torch.nn.Module):
         return kl_div_W + kl_div_b
 
 
-class BayesianNeuralNetwork(nn.Sequential):
+class BayesianNeuralNetwork(nn.Module):
     def __init__(
         self,
         in_dim: int = 2,
@@ -108,7 +108,7 @@ class BayesianNeuralNetwork(nn.Sequential):
     def kl_div(self) -> Tensor:
         """Sums KL divergence across all layers."""
         kl_total: Tensor = torch.tensor(0.0, device=self.device)
-        for lyr in self:
+        for lyr in (self.BL1, self.BL2, self.BL3):
             if hasattr(lyr, "kl_div"):
                 kl_total = kl_total + lyr.kl_div()
         return kl_total

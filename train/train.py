@@ -11,6 +11,7 @@ def train_bnn(
     epochs=50, 
     beta=1.0
 ):
+    """Train a Bayesian neural network using BCE loss + KL regularization."""
     dataset_size = len(train_loader.dataset)
     device = model.device
 
@@ -26,6 +27,8 @@ def train_bnn(
             with torch.set_grad_enabled(True):
                 preds = model(x_batch)
                 kl = model.kl_div()
+                nll = torch.nn.functional.binary_cross_entropy(preds, y_batch)
+                loss = nll + beta * kl / dataset_size
 
             
             optimizer.zero_grad()
