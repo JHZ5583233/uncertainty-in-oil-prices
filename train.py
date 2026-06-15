@@ -6,8 +6,8 @@ from tools import detect_device
 loss = torch.nn.GaussianNLLLoss()
 
 def train_bnn(
-    model, 
-    train_loader, 
+    model,
+    train_loader,
     test_loader, 
     optimizer: optim.Optimizer, 
     epochs=50, 
@@ -26,7 +26,7 @@ def train_bnn(
             with torch.set_grad_enabled(True):
                 mean, varience = model(x_batch)
                 kl = model.kl_div()
-    
+
                 loss_val = loss(mean, y_batch, varience) + (beta * kl)
                 optimizer.zero_grad()
                 loss_val.backward()
@@ -45,7 +45,7 @@ def train_bnn(
 
                 error = (mean - y_batch)**2
                 sum_error += sum(error)
-                
+
 
         if epoch % 10 == 0:
             print(f"Epoch {epoch+1:03d} | Train Loss: {avg_train_loss:.4f} | cumulative error {sum_error}")
@@ -54,11 +54,11 @@ def train_bnn(
 if __name__ == "__main__":
     from pathlib import Path
     from pandas import read_csv
-    
+
     from model.base_model import BayesianNeuralNetwork as BNN
     from data.data_loader import split_input, split_groundtruth, data_to_loader
 
-    model = BNN(3)
+    model = BNN(4)
 
     dataframe = read_csv(Path("./data/global_fuel_prices_2020_2026.csv"))
 
@@ -68,8 +68,8 @@ if __name__ == "__main__":
     train_l, test_l = data_to_loader(input_b, output_b)
 
     train_bnn(
-        model, 
-        train_l, 
-        test_l, 
+        model,
+        train_l,
+        test_l,
         torch.optim.AdamW(model.parameters(), lr=1e-3, weight_decay=1e-4)
     )

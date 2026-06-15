@@ -78,7 +78,9 @@ class BayesianNeuralNetwork(nn.Module):
         self.BL3 = BayesianLinear(5, 5, bias=use_bias, device=self.device)
 
         self.mean = BayesianLinear(5, 1, bias=use_bias, device=self.device)
-        self.varience = BayesianLinear(5, 1, bias=use_bias, device=self.device)
+        self.varience = nn.Sequential(
+            BayesianLinear(5, 1, bias=use_bias, device=self.device), nn.Softplus()
+        )
 
         self.activation = nn.Tanh()
 
@@ -93,5 +95,5 @@ class BayesianNeuralNetwork(nn.Module):
         x = self.activation(self.BL1(x))
         x = self.activation(self.BL2(x))
         x = self.activation(self.BL3(x))
-        
+
         return (self.mean(x), self.varience(x))
