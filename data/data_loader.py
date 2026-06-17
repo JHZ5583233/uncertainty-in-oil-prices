@@ -12,7 +12,13 @@ def split_input(df: pd.DataFrame) -> pd.DataFrame:
 
     countries = df["country"].unique()
     country_indexer: dict[str, int] = dict()
-    level_indexer: dict[str, int] = {"Low": 0, "Medium": 1, "High": 2, "Middle": 1, "Very High": 3}
+    level_indexer: dict[str, int] = {
+        "Low": 0,
+        "Medium": 1,
+        "High": 2,
+        "Middle": 1,
+        "Very High": 3,
+    }
 
     for index, country in enumerate(countries):
         country_converter[index] = country
@@ -43,16 +49,54 @@ def split_groundtruth(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def data_to_loader(
-    input_data: pd.DataFrame, output_data: pd.DataFrame, test_size: float = 0.2
+    input_data: pd.DataFrame,
+    output_data: pd.DataFrame,
+    test_size: float = 0.2,
+    countries: list[str] | None = None,
 ) -> tuple[DataLoader, DataLoader]:
+    """
+    Create PyTorch DataLoaders with train/test split.
+
+    Args:
+        input_data: Preprocessed input features DataFrame
+        output_data: Ground truth target values DataFrame
+        test_size: Proportion of data to use as test set (default 0.2)
+        countries: Optional list of country names to filter; if provided,
+                   only rows with these countries will be included.
+
+    Returns:
+        Tuple of (train_loader, test_loader) DataLoaders
+    """
+    # Filter by countries if specified
+    if countries is not None and len(countries) > 0:
+        input_data = input_data[
+            input_data["country_index"].isin(country_converter.values())
+        ].reset(drop=True)
+        output_data = (
+            output_data[input_data.index.isin(output_data.index)]
+            .reset(drop=False, index_name=None)
+            .drop(
+                columns=[c for c in output_data.columns if c not in ["brent_cruse_usd"]]
+            )
+            .iloc[: len(input_data)]
+        )  # type: ignore
+
     X_train, X_test, Y_train, Y_test = train_test_split(
         input_data, output_data, test_size=test_size
     )
-    X_train_tensor = torch.from_numpy(X_train.values)
-    Y_train_tensor = torch.from_numpy(Y_train.values)
-    X_test_tensor = torch.from_numpy(X_test.values)
-    Y_test_tensor = torch.from_numpy(Y_test.values)
 
+    # Convert to tensors
+    def convert_to_tensor(data):
+        """Convert pandas DataFrame or numpy array to torch tensor."""
+        if hasattr(data, 'values'):
+            return torch.from_numpy(data.values)
+        else:  # already a numpy array
+            return torch.tensor(np.asarray(data))
+
+    X_train_tensor = convert_to_tensor(X_train)
+    Y_train_tensor = convert_to_tensor(Y_train)
+    X_test_tensor = convert_to_tensor(X_test)
+    Y_test_tensor = convert_to_tensor(Y_test)
     train_dataset = TensorDataset(X_train_tensor, Y_train_tensor)
     test_dataset = TensorDataset(X_test_tensor, Y_test_tensor)
 
