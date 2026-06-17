@@ -1,35 +1,21 @@
-from typing import Optional
-
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
-from torch import Tensor
-from torch.utils.data import DataLoader, TensorDataset
+from torch import nn
+
+from tools import detect_device
 
 
-def get_device() -> torch.device:
-    """Auto-detect the best available device (GPU or CPU)."""
-    if torch.cuda.is_available():
-        return torch.device("cuda")
-    elif torch.backends.mps.is_available():
-        return torch.device("mps")  # Apple Metal Performance Shaders
-    else:
-        return torch.device("cpu")
-
-
-class BayesianLinear(torch.nn.Module):
-    def __init__(
-        self,
-        in_dim: int,
-        out_dim: int,
-        bias: bool = False,
-        device: Optional[torch.device] = None,
-    ) -> None:
+class BayesianLinear(nn.Module):
+    def __init__(self, in_dim: int, out_dim: int, bias: bool = False, device: str = ""):
         super().__init__()
-        self.in_dim: int = in_dim
-        self.out_dim: int = out_dim
-        self.bias: bool = bias
-        self.device: torch.device = device if device is not None else get_device()
+        self.in_dim = in_dim
+        self.out_dim = out_dim
+        self.bias = bias
+
+        if device != "":
+            self.device = device
+        else:
+            self.device = detect_device()
 
         self.w_log_var = nn.Parameter(
             -2 + 0.1 * torch.randn([self.in_dim, self.out_dim], device=self.device)
@@ -38,7 +24,6 @@ class BayesianLinear(torch.nn.Module):
             0.1 * torch.randn([self.in_dim, self.out_dim], device=self.device)
         )
 
-        # Same small initialization here
         if self.bias:
             self.bias_log_var = nn.Parameter(
                 -2 + 0.1 * torch.randn(self.out_dim, device=self.device)
@@ -47,75 +32,68 @@ class BayesianLinear(torch.nn.Module):
                 0.1 * torch.randn([self.out_dim], device=self.device)
             )
 
-    def forward(self, x: Tensor) -> Tensor:
-        # Sample weights from approximate posterior: mean + stddev * random noise - reparam trick
-        weight: Tensor = self.w_mu + self.w_log_var.exp().sqrt() * torch.randn_like(
-            self.w_log_var, device=self.device
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        weight: torch.Tensor = (
+            self.w_mu
+            + self.w_log_var.exp().sqrt()
+            * torch.randn_like(self.w_log_var, device=self.device)
         )
         if self.bias:
-            # Sample bias similarly if enabled
-            bias: Tensor = (
+            bias: torch.Tensor = (
                 self.bias_mu
                 + self.bias_log_var.exp().sqrt()
                 * torch.randn_like(self.bias_log_var, device=self.device)
             )
         else:
-            # If no bias, use zero bias vector
-            bias: Tensor = torch.zeros(self.out_dim, device=self.device)
+            bias = torch.zeros(self.out_dim, device=self.device)
 
-        # Apply linear transformation using sampled weight and bias
         return F.linear(x, weight.t(), bias)
 
-    def kl_div(self) -> Tensor:
-        # Compute KL divergence between approximate posterior and standard normal prior for weights
-        kl_div_W: Tensor = 0.5 * torch.sum(
+    def kl_div(self) -> torch.Tensor:
+        kl_div_W = 0.5 * torch.sum(
             -self.w_log_var + self.w_log_var.exp() + self.w_mu**2 - 1
         )
 
         if self.bias:
-            # Compute KL divergence for bias parameters if enabled
-            kl_div_b: Tensor = 0.5 * torch.sum(
+            kl_div_b = 0.5 * torch.sum(
                 -self.bias_log_var + self.bias_log_var.exp() + self.bias_mu**2 - 1
             )
         else:
-            kl_div_b: Tensor = torch.tensor(0.0, device=self.device)
+            kl_div_b = 0
 
         return kl_div_W + kl_div_b
 
 
-class BayesianNeuralNetwork(nn.Sequential):
-    def __init__(
-        self,
-        in_dim: int = 2,
-        use_bias: bool = False,
-        device: Optional[torch.device] = None,
-    ) -> None:
+class BayesianNeuralNetwork(nn.Module):
+    def __init__(self, in_dim=2, use_bias=False, device=""):
         super().__init__()
-        self.device: torch.device = device if device is not None else get_device()
-        self.BL1: BayesianLinear = BayesianLinear(
-            in_dim, 5, bias=use_bias, device=self.device
-        )
-        self.BL2: BayesianLinear = BayesianLinear(
-            5, 5, bias=use_bias, device=self.device
-        )
-        self.BL3: BayesianLinear = BayesianLinear(
-            5, 1, bias=use_bias, device=self.device
+
+        if device != "":
+            self.device = device
+        else:
+            self.device = detect_device()
+
+        self.BL1 = BayesianLinear(in_dim, 5, bias=use_bias, device=self.device)
+        self.BL2 = BayesianLinear(5, 5, bias=use_bias, device=self.device)
+        self.BL3 = BayesianLinear(5, 5, bias=use_bias, device=self.device)
+
+        self.mean = BayesianLinear(5, 1, bias=use_bias, device=self.device)
+        self.varience = nn.Sequential(
+            BayesianLinear(5, 1, bias=use_bias, device=self.device), nn.Softplus()
         )
 
-        self.activation: nn.Module = nn.Tanh()
-        self.output_activation: nn.Module = nn.Sigmoid()
+        self.activation = nn.Tanh()
 
-    def kl_div(self) -> Tensor:
-        """Sums KL divergence across all layers."""
-        kl_total: Tensor = torch.tensor(0.0, device=self.device)
-        for lyr in self:
-            if hasattr(lyr, "kl_div"):
+    def kl_div(self) -> torch.Tensor:
+        kl_total: torch.Tensor = torch.tensor(0.0, device=self.device)
+        for lyr in self.modules():
+            if isinstance(lyr, BayesianLinear):
                 kl_total = kl_total + lyr.kl_div()
         return kl_total
 
-    def forward(self, x: Tensor) -> Tensor:
-        x: Tensor = self.activation(self.BL1(x))
-        x: Tensor = self.activation(self.BL2(x))
-        x: Tensor = self.BL3(x)
-        x: Tensor = self.output_activation(x)
-        return x
+    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        x = self.activation(self.BL1(x))
+        x = self.activation(self.BL2(x))
+        x = self.activation(self.BL3(x))
+
+        return (self.mean(x), self.varience(x))
