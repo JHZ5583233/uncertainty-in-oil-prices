@@ -1,5 +1,6 @@
-import pandas
 from pathlib import Path
+
+import pandas
 
 
 def dataformatter(csv_path: Path) -> pandas.DataFrame:
@@ -8,4 +9,4 @@ def dataformatter(csv_path: Path) -> pandas.DataFrame:
     elif csv_path.suffix != ".csv":
         raise ValueError("Is not a csv file.")
 
-    return pandas.read_csv(csv_path, header=1)
+    return pandas.read_csv(csv_path, header=0)

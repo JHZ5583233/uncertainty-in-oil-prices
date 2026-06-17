@@ -1,0 +1,1 @@
+use income level, subsidy level and tax percentage, to predict petrol price.
