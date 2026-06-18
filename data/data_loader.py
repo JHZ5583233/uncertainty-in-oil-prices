@@ -88,7 +88,7 @@ def data_to_loader(
     # Convert to tensors
     def convert_to_tensor(data):
         """Convert pandas DataFrame or numpy array to torch tensor."""
-        if hasattr(data, 'values'):
+        if hasattr(data, "values"):
             return torch.from_numpy(data.values)
         else:  # already a numpy array
             return torch.tensor(np.asarray(data))
