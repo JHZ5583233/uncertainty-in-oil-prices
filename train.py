@@ -68,6 +68,7 @@ if __name__ == "__main__":
     from model.base_model import BayesianNeuralNetwork as BNN
 
     countries = ["United States", "Jordan", "Namibia"]
+    model_save_dir = Path("./save_model")
 
     model = BNN(2)
 
@@ -88,4 +89,4 @@ if __name__ == "__main__":
         epochs=5,
     )
 
-    torch.save(model.state_dict(), Path("./save_model/m.pyt"))
+    torch.save(model.state_dict(), model_save_dir.joinpath(f"{len([0 for _ in model_save_dir.iterdir()])}.pyt"))
