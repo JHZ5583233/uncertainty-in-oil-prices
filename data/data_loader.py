@@ -12,30 +12,18 @@ def split_input(df: pd.DataFrame) -> pd.DataFrame:
 
     countries = df["country"].unique()
     country_indexer: dict[str, int] = dict()
-    level_indexer: dict[str, int] = {
-        "Low": 0,
-        "Medium": 1,
-        "High": 2,
-        "Middle": 1,
-        "Very High": 3,
-    }
 
     for index, country in enumerate(countries):
         country_converter[index] = country
         country_indexer[country] = index
 
     country_index: list[int] = []
-    income_index: list[int] = []
-    subsidy_index: list[int] = []
 
     for i, _ in enumerate(df["country"]):
         country_index.append(country_indexer[df["country"].iloc[i]])
-        income_index.append(level_indexer[df["income_level"].iloc[i]])
-        subsidy_index.append(level_indexer[df["subsidy_level"].iloc[i]])
 
     r_dataframe["country_index"] = country_index
-    r_dataframe["income_index"] = income_index
-    r_dataframe["subsidy_index"] = subsidy_index
+    r_dataframe["petrol_usd_liter"] = df["petrol_usd_liter"]
     r_dataframe["tax_percentage"] = df["tax_percentage"]
 
     return r_dataframe
@@ -43,7 +31,7 @@ def split_input(df: pd.DataFrame) -> pd.DataFrame:
 
 def split_groundtruth(df: pd.DataFrame) -> pd.DataFrame:
     r_dataframe = pd.DataFrame()
-    r_dataframe["brent_cruse_usd"] = df["brent_crude_usd"]
+    r_dataframe["diesel_usd_liter"] = df["diesel_usd_liter"]
 
     return r_dataframe
 
