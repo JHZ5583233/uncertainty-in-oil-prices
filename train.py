@@ -1,9 +1,9 @@
+from copy import deepcopy
+
 import torch
 from torch import optim
 
 from tools import detect_device
-
-from copy import deepcopy
 
 loss = torch.nn.GaussianNLLLoss()
 
@@ -67,8 +67,7 @@ if __name__ == "__main__":
     from data.data_loader import data_to_loader, split_groundtruth, split_input
     from model.base_model import BayesianNeuralNetwork as BNN
 
-    countries=["United States", "Jordan", "Namibia"]
-
+    countries = ["United States", "Jordan", "Namibia"]
 
     model = BNN(2)
 
@@ -78,7 +77,7 @@ if __name__ == "__main__":
     output_b = split_groundtruth(deepcopy(dataframe), countries)
 
     print(output_b)
-    
+
     train_l, test_l = data_to_loader(input_b, output_b)
 
     train_bnn(
