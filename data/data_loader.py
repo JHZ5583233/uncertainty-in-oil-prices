@@ -7,96 +7,37 @@ level_converter: dict[int, str] = {0: "Low", 1: "Medium", 2: "High"}
 country_converter: dict[int, str] = dict()
 
 
-def split_input(df: pd.DataFrame) -> pd.DataFrame:
-    r_dataframe = pd.DataFrame()
+def split_input(df: pd.DataFrame, countries: list[str]|None= None) -> pd.DataFrame:
+    if countries is not None:
+        df = df[df["country"].isin(countries)]
+    
+    df = df[["petrol_usd_liter", "tax_percentage"]]
 
-    countries = df["country"].unique()
-    country_indexer: dict[str, int] = dict()
-    level_indexer: dict[str, int] = {
-        "Low": 0,
-        "Medium": 1,
-        "High": 2,
-        "Middle": 1,
-        "Very High": 3,
-    }
-
-    for index, country in enumerate(countries):
-        country_converter[index] = country
-        country_indexer[country] = index
-
-    country_index: list[int] = []
-    income_index: list[int] = []
-    subsidy_index: list[int] = []
-
-    for i, _ in enumerate(df["country"]):
-        country_index.append(country_indexer[df["country"].iloc[i]])
-        income_index.append(level_indexer[df["income_level"].iloc[i]])
-        subsidy_index.append(level_indexer[df["subsidy_level"].iloc[i]])
-
-    r_dataframe["country_index"] = country_index
-    r_dataframe["income_index"] = income_index
-    r_dataframe["subsidy_index"] = subsidy_index
-    r_dataframe["tax_percentage"] = df["tax_percentage"]
-
-    return r_dataframe
+    return df
 
 
-def split_groundtruth(df: pd.DataFrame) -> pd.DataFrame:
-    r_dataframe = pd.DataFrame()
-    r_dataframe["brent_cruse_usd"] = df["brent_crude_usd"]
+def split_groundtruth(df: pd.DataFrame,  countries: list[str]|None= None) -> pd.DataFrame:
+    if countries is not None:
+        df = df[df["country"].isin(countries)]
+    
+    df = df["diesel_usd_liter"]
 
-    return r_dataframe
+    return df
 
 
 def data_to_loader(
     input_data: pd.DataFrame,
     output_data: pd.DataFrame,
     test_size: float = 0.2,
-    countries: list[str] | None = None,
 ) -> tuple[DataLoader, DataLoader]:
-    """
-    Create PyTorch DataLoaders with train/test split.
-
-    Args:
-        input_data: Preprocessed input features DataFrame
-        output_data: Ground truth target values DataFrame
-        test_size: Proportion of data to use as test set (default 0.2)
-        countries: Optional list of country names to filter; if provided,
-                   only rows with these countries will be included.
-
-    Returns:
-        Tuple of (train_loader, test_loader) DataLoaders
-    """
-    # Filter by countries if specified
-    if countries is not None and len(countries) > 0:
-        input_data = input_data[
-            input_data["country_index"].isin(country_converter.values())
-        ].reset(drop=True)
-        output_data = (
-            output_data[input_data.index.isin(output_data.index)]
-            .reset(drop=False, index_name=None)
-            .drop(
-                columns=[c for c in output_data.columns if c not in ["brent_cruse_usd"]]
-            )
-            .iloc[: len(input_data)]
-        )  # type: ignore
-
     X_train, X_test, Y_train, Y_test = train_test_split(
         input_data, output_data, test_size=test_size
     )
-
-    # Convert to tensors
-    def convert_to_tensor(data):
-        """Convert pandas DataFrame or numpy array to torch tensor."""
-        if hasattr(data, "values"):
-            return torch.from_numpy(data.values)
-        else:  # already a numpy array
-            return torch.tensor(np.asarray(data))
-
-    X_train_tensor = convert_to_tensor(X_train)
-    Y_train_tensor = convert_to_tensor(Y_train)
-    X_test_tensor = convert_to_tensor(X_test)
-    Y_test_tensor = convert_to_tensor(Y_test)
+    
+    X_train_tensor = torch.from_numpy(X_train.to_numpy())
+    Y_train_tensor = torch.from_numpy(Y_train.to_numpy())
+    X_test_tensor = torch.from_numpy(X_test.to_numpy())
+    Y_test_tensor = torch.from_numpy(Y_test.to_numpy())
     train_dataset = TensorDataset(X_train_tensor, Y_train_tensor)
     test_dataset = TensorDataset(X_test_tensor, Y_test_tensor)
 
