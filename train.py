@@ -3,6 +3,8 @@ from torch import optim
 
 from tools import detect_device
 
+from copy import deepcopy
+
 loss = torch.nn.GaussianNLLLoss()
 
 
@@ -65,13 +67,18 @@ if __name__ == "__main__":
     from data.data_loader import data_to_loader, split_groundtruth, split_input
     from model.base_model import BayesianNeuralNetwork as BNN
 
-    model = BNN(4)
+    countries=["United States", "Jordan", "Namibia"]
+
+
+    model = BNN(2)
 
     dataframe = read_csv(Path("./data/global_fuel_prices_2020_2026.csv"))
 
-    input_b = split_input(dataframe)
-    output_b = split_groundtruth(dataframe)
+    input_b = split_input(deepcopy(dataframe), countries)
+    output_b = split_groundtruth(deepcopy(dataframe), countries)
 
+    print(output_b)
+    
     train_l, test_l = data_to_loader(input_b, output_b)
 
     train_bnn(
@@ -81,3 +88,5 @@ if __name__ == "__main__":
         torch.optim.AdamW(model.parameters(), lr=1e-3, weight_decay=1e-4),
         epochs=5,
     )
+
+    torch.save(model.state_dict(), Path("./save_model/m.pyt"))
